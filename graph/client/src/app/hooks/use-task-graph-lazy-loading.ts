@@ -71,25 +71,42 @@ export function useTaskGraphLazyLoading(
           configuration
         );
 
-        setTaskGraphs((prev) => ({
-          ...prev,
-          ...response.taskGraphs,
-        }));
-
-        if (response.errors && Object.keys(response.errors).length > 0) {
-          setErrors((prev) => ({
+        if (response && response.taskGraphs) {
+          setTaskGraphs((prev) => ({
             ...prev,
-            ...response.errors,
+            ...response.taskGraphs,
           }));
-        }
 
-        return response;
+          if (response.errors && Object.keys(response.errors).length > 0) {
+            setErrors((prev) => ({
+              ...prev,
+              ...response.errors,
+            }));
+          }
+
+          return response;
+        } else {
+          throw new Error('Invalid response: missing taskGraphs');
+        }
       } catch (error) {
         console.error(`Failed to load task graph for ${taskId}:`, error);
+        const errorMessage = error.message || 'Failed to load task graph';
         setErrors((prev) => ({
           ...prev,
-          [taskId]: error.message || 'Failed to load task graph',
+          [taskId]: errorMessage,
         }));
+
+        // Create an empty task graph to prevent the error from recurring
+        setTaskGraphs((prev) => ({
+          ...prev,
+          [taskId]: {
+            tasks: {},
+            dependencies: {},
+            continuousDependencies: {},
+            roots: [],
+          },
+        }));
+
         return null;
       } finally {
         setLoadingTasks((prev) => {

@@ -57,12 +57,14 @@ export function TasksSidebar() {
   let { projects, targets } = selectedWorkspaceRouteData;
 
   // If we have metadata, use it to build the targets list more efficiently
-  if (metadata) {
+  if (metadata?.projects) {
     const allTargets = new Set<string>();
     metadata.projects.forEach((project) => {
-      project.targets.forEach((target) => {
-        allTargets.add(target.name);
-      });
+      if (project.targets) {
+        project.targets.forEach((target) => {
+          allTargets.add(target.name);
+        });
+      }
     });
     targets = Array.from(allTargets).sort();
   }
@@ -183,14 +185,6 @@ export function TasksSidebar() {
   }
 
   useEffect(() => {
-    graphService.handleTaskEvent({
-      type: 'notifyTaskGraphSetProjects',
-      projects: selectedWorkspaceRouteData.projects,
-      taskGraphs: routeData.taskGraphs || {},
-    });
-  }, [selectedWorkspaceRouteData, routeData.taskGraphs]);
-
-  useEffect(() => {
     if (groupByProject) {
       graphService.handleTaskEvent({
         type: 'setGroupByProject',
@@ -227,11 +221,47 @@ export function TasksSidebar() {
   ]);
 
   useEffect(() => {
+    // Notify the graph service about selected tasks
+    // Ensure we have placeholder task graphs for any missing ones to prevent errors
+    const taskIds = selectedProjects.map((p) =>
+      createTaskName(p, selectedTarget)
+    );
+
+    // Create empty placeholder task graphs for tasks that haven't loaded yet
+    const allTaskGraphs = {
+      ...(routeData.taskGraphs || {}),
+      ...lazyTaskGraphs,
+    };
+    taskIds.forEach((taskId) => {
+      if (!allTaskGraphs[taskId]) {
+        allTaskGraphs[taskId] = {
+          tasks: {},
+          dependencies: {},
+          continuousDependencies: {},
+          roots: [],
+        };
+      }
+    });
+
+    // Update the graph service with complete task graphs including placeholders
+    graphService.handleTaskEvent({
+      type: 'notifyTaskGraphSetProjects',
+      projects: selectedWorkspaceRouteData.projects,
+      taskGraphs: allTaskGraphs,
+    });
+
     graphService.handleTaskEvent({
       type: 'notifyTaskGraphSetTasks',
-      taskIds: selectedProjects.map((p) => createTaskName(p, selectedTarget)),
+      taskIds: taskIds,
     });
-  }, [graphService, selectedProjects, selectedTarget]);
+  }, [
+    graphService,
+    selectedProjects,
+    selectedTarget,
+    lazyTaskGraphs,
+    routeData.taskGraphs,
+    selectedWorkspaceRouteData.projects,
+  ]);
 
   function groupByProjectChanged(checked) {
     setSearchParams(

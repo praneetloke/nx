@@ -68,13 +68,24 @@ const taskDataLoader = async (selectedWorkspaceId: string) => {
     'task-graph-metadata.json'
   );
   try {
-    const metadata = await fetch(metadataUrl).then((res) => res.json());
-    return {
-      taskGraphs: {},
-      plans: {},
-      errors: {},
-      metadata, // Include metadata for UI tree building
-    };
+    const metadata = await fetch(metadataUrl).then((res) => {
+      if (!res.ok) {
+        throw new Error(`Failed to fetch metadata: ${res.status}`);
+      }
+      return res.json();
+    });
+
+    // Validate metadata structure
+    if (metadata && Array.isArray(metadata.projects)) {
+      return {
+        taskGraphs: {},
+        plans: {},
+        errors: {},
+        metadata, // Include metadata for UI tree building
+      };
+    } else {
+      throw new Error('Invalid metadata structure');
+    }
   } catch {
     // Fallback to legacy behavior if metadata endpoint is not available
     return await projectGraphDataService.getTaskGraph(
@@ -94,6 +105,10 @@ const loadSpecificTaskGraph = async (
     (graph) => graph.id === selectedWorkspaceId
   );
 
+  if (!workspaceInfo?.taskGraphUrl) {
+    throw new Error('Task graph URL not configured for workspace');
+  }
+
   const url = new URL(workspaceInfo.taskGraphUrl);
   url.searchParams.set('project', projectName);
   url.searchParams.set('target', targetName);
@@ -101,7 +116,14 @@ const loadSpecificTaskGraph = async (
     url.searchParams.set('configuration', configuration);
   }
 
-  return await fetch(url.toString()).then((res) => res.json());
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch task graph: ${response.status} ${response.statusText}`
+    );
+  }
+
+  return await response.json();
 };
 
 const sourceMapsLoader = async (selectedWorkspaceId: string) => {
