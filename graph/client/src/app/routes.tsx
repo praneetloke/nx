@@ -63,10 +63,13 @@ const taskDataLoader = async (selectedWorkspaceId: string) => {
   );
 
   // Use the new task graph metadata endpoint for faster initial loading
-  const metadataUrl = workspaceInfo.taskGraphUrl.replace(
-    'task-graph.json',
-    'task-graph-metadata.json'
-  );
+  const metadataUrl = new URL(
+    workspaceInfo.taskGraphUrl.replace(
+      'task-graph.json',
+      'task-graph-metadata.json'
+    ),
+    window.location.origin
+  ).toString();
   try {
     const metadata = await fetch(metadataUrl).then((res) => {
       if (!res.ok) {
@@ -105,11 +108,23 @@ const loadSpecificTaskGraph = async (
     (graph) => graph.id === selectedWorkspaceId
   );
 
-  if (!workspaceInfo?.taskGraphUrl) {
-    throw new Error('Task graph URL not configured for workspace');
+  if (!workspaceInfo) {
+    throw new Error(
+      `Workspace not found: ${selectedWorkspaceId}. Available workspaces: ${appConfig.workspaces
+        .map((w) => w.id)
+        .join(', ')}`
+    );
   }
 
-  const url = new URL(workspaceInfo.taskGraphUrl);
+  if (!workspaceInfo.taskGraphUrl) {
+    throw new Error(
+      `Task graph URL not configured for workspace: ${selectedWorkspaceId}. WorkspaceInfo: ${JSON.stringify(
+        workspaceInfo
+      )}`
+    );
+  }
+
+  const url = new URL(workspaceInfo.taskGraphUrl, window.location.origin);
   url.searchParams.set('project', projectName);
   url.searchParams.set('target', targetName);
   if (configuration) {
