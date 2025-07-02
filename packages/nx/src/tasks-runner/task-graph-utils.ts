@@ -160,7 +160,7 @@ export function assertTaskGraphDoesNotContainInvalidTargets(
   taskGraph: TaskGraph
 ) {
   const nonParallelTasksThatDependOnContinuousTasks = [];
-  const nonParallelContinousTasksThatAreDependedOn = [];
+  const nonParallelContinuousTasksThatAreDependedOn = [];
   for (const task of Object.values(taskGraph.tasks)) {
     if (
       task.parallelism === false &&
@@ -170,7 +170,7 @@ export function assertTaskGraphDoesNotContainInvalidTargets(
     }
     for (const dependency of taskGraph.continuousDependencies[task.id]) {
       if (taskGraph.tasks[dependency].parallelism === false) {
-        nonParallelContinousTasksThatAreDependedOn.push(
+        nonParallelContinuousTasksThatAreDependedOn.push(
           taskGraph.tasks[dependency]
         );
       }
@@ -183,9 +183,9 @@ export function assertTaskGraphDoesNotContainInvalidTargets(
       taskGraph
     );
   }
-  if (nonParallelContinousTasksThatAreDependedOn.length > 0) {
+  if (nonParallelContinuousTasksThatAreDependedOn.length > 0) {
     throw new NonParallelContinuousTaskIsDependedOnError(
-      nonParallelContinousTasksThatAreDependedOn,
+      nonParallelContinuousTasksThatAreDependedOn,
       taskGraph
     );
   }
