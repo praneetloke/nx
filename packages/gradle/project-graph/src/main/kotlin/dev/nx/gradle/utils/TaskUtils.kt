@@ -358,8 +358,10 @@ fun getExternalDepFromInputFile(
  */
 fun replaceRootInPath(path: String, projectRoot: String, workspaceRoot: String): String? {
   return when {
-    path.startsWith(projectRoot) -> path.replace(projectRoot, "{projectRoot}")
-    path.startsWith(workspaceRoot) -> path.replace(workspaceRoot, "{workspaceRoot}")
+    path == projectRoot -> "{projectRoot}"
+    path.startsWith("$projectRoot/") -> path.replace(projectRoot, "{projectRoot}")
+    path == workspaceRoot -> "{workspaceRoot}"
+    path.startsWith("$workspaceRoot/") -> path.replace(workspaceRoot, "{workspaceRoot}")
     else -> null
   }
 }
