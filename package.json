@@ -20,6 +20,7 @@
     "submit-plugin": "node ./scripts/submit-plugin.js",
     "prepare": "is-ci || husky",
     "echo": "echo 123458",
+    "fail-task": "exit 1",
     "preinstall": "node ./scripts/preinstall.js",
     "test": "nx run-many -t test",
     "e2e": "nx run-many -t e2e --projects ./e2e/*",
@@ -415,6 +416,7 @@
     "includedScripts": [
       "lint-pnpm-lock",
       "echo",
+      "fail-task",
       "check-commit",
       "check-format",
       "check-format:quick",

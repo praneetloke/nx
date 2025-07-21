@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use crate::native::tasks::types::TaskGraph;
 use crate::native::tui::components::tasks_list::TaskStatus;
-use crate::native::tui::graph_utils::is_task_continuous;
+use crate::native::tui::graph_utils::{
+    get_dependency_chain_failures, get_failed_dependencies, get_skipped_dependencies,
+    is_task_continuous,
+};
 use crate::native::tui::status_icons;
 use crate::native::tui::theme::THEME;
 use ratatui::{
@@ -94,9 +97,12 @@ impl DependencyViewState {
         self.pane_area = pane_area;
     }
 
-    /// Returns true if this dependency view should handle key events (i.e., task is pending)
+    /// Returns true if this dependency view should handle key events (i.e., task is pending or skipped with scrollable content)
     pub fn should_handle_key_events(&self) -> bool {
-        matches!(self.task_status, TaskStatus::NotStarted)
+        matches!(
+            self.task_status,
+            TaskStatus::NotStarted | TaskStatus::Skipped
+        )
     }
 
     /// Calculate viewport height from pane area, accounting for borders and padding
@@ -219,6 +225,189 @@ impl<'a> DependencyView<'a> {
             .style(Style::default());
 
         Widget::render(paragraph, area, buf);
+    }
+
+    /// Render detailed information for skipped tasks showing which dependencies failed
+    fn render_skipped_task_info(
+        &self,
+        state: &mut DependencyViewState,
+        area: Rect,
+        buf: &mut Buffer,
+    ) {
+        let mut lines = Vec::new();
+
+        let failed_deps =
+            get_failed_dependencies(&state.current_task, self.task_graph, self.status_map);
+        let skipped_deps =
+            get_skipped_dependencies(&state.current_task, self.task_graph, self.status_map);
+        let root_causes =
+            get_dependency_chain_failures(&state.current_task, self.task_graph, self.status_map);
+
+        // Header
+        let header_style = Self::apply_focus_styling(
+            Style::default()
+                .fg(THEME.error)
+                .add_modifier(Modifier::BOLD),
+            state.is_focused,
+        );
+        lines.push(Line::from(vec![Span::styled(
+            "🚫 Task was skipped due to dependency failures:",
+            header_style,
+        )]));
+        lines.push(Line::from("")); // Empty line for spacing
+
+        // Failed Dependencies Section
+        if !failed_deps.is_empty() {
+            let section_style = Self::apply_focus_styling(
+                Style::default()
+                    .fg(THEME.error)
+                    .add_modifier(Modifier::BOLD),
+                state.is_focused,
+            );
+            lines.push(Line::from(vec![Span::styled(
+                "Failed Dependencies:",
+                section_style,
+            )]));
+
+            for dep in &failed_deps {
+                let line_style =
+                    Self::apply_focus_styling(Style::default().fg(THEME.error), state.is_focused);
+                lines.push(Line::from(vec![
+                    Span::styled("  ❌ ", Style::default().fg(THEME.error)),
+                    Span::styled(format!("{} (failed)", dep), line_style),
+                ]));
+            }
+            lines.push(Line::from("")); // Empty line for spacing
+        }
+
+        // Skipped Dependencies Section
+        if !skipped_deps.is_empty() {
+            let section_style = Self::apply_focus_styling(
+                Style::default()
+                    .fg(THEME.warning)
+                    .add_modifier(Modifier::BOLD),
+                state.is_focused,
+            );
+            lines.push(Line::from(vec![Span::styled(
+                "Skipped Dependencies:",
+                section_style,
+            )]));
+
+            for dep in &skipped_deps {
+                let line_style =
+                    Self::apply_focus_styling(Style::default().fg(THEME.warning), state.is_focused);
+                lines.push(Line::from(vec![
+                    Span::styled("  🚫 ", Style::default().fg(THEME.warning)),
+                    Span::styled(format!("{} (skipped)", dep), line_style),
+                ]));
+            }
+            lines.push(Line::from("")); // Empty line for spacing
+        }
+
+        // Root Causes Section
+        if !root_causes.is_empty() {
+            let section_style = Self::apply_focus_styling(
+                Style::default().fg(THEME.info).add_modifier(Modifier::BOLD),
+                state.is_focused,
+            );
+            lines.push(Line::from(vec![Span::styled(
+                "Root Causes:",
+                section_style,
+            )]));
+
+            for (task, affected_count) in &root_causes {
+                let line_style =
+                    Self::apply_focus_styling(Style::default().fg(THEME.info), state.is_focused);
+                let count_text = if *affected_count == 1 {
+                    "1 task".to_string()
+                } else {
+                    format!("{} tasks", affected_count)
+                };
+                lines.push(Line::from(vec![
+                    Span::styled("  • ", Style::default().fg(THEME.info)),
+                    Span::styled(task.clone(), line_style.add_modifier(Modifier::BOLD)),
+                    Span::styled(" → caused ", line_style),
+                    Span::styled(count_text, line_style.add_modifier(Modifier::BOLD)),
+                    Span::styled(" to be skipped", line_style),
+                ]));
+            }
+        }
+
+        // If no specific failure information is available, show generic message
+        if failed_deps.is_empty() && skipped_deps.is_empty() && root_causes.is_empty() {
+            let generic_style =
+                Self::apply_focus_styling(Style::default().fg(THEME.warning), state.is_focused);
+            lines.push(Line::from(vec![Span::styled(
+                "Task was skipped, but dependency failure details are not available.",
+                generic_style,
+            )]));
+        }
+
+        // Calculate scrolling parameters
+        let content_height = lines.len();
+        let viewport_height = area.height as usize;
+        let max_scroll = content_height.saturating_sub(viewport_height);
+
+        // Update scrollbar state
+        let needs_scrollbar = max_scroll > 0;
+        state.scrollbar_state = if needs_scrollbar {
+            state
+                .scrollbar_state
+                .content_length(max_scroll)
+                .viewport_content_length(viewport_height)
+                .position(state.scroll_offset)
+        } else {
+            ScrollbarState::default()
+        };
+
+        // Apply scroll offset to lines
+        let visible_lines: Vec<Line> =
+            if state.scroll_offset > 0 && content_height > viewport_height {
+                let start = state
+                    .scroll_offset
+                    .min(content_height.saturating_sub(viewport_height));
+                let end = (start + viewport_height).min(content_height);
+                lines[start..end].to_vec()
+            } else {
+                lines
+            };
+
+        let paragraph = Paragraph::new(visible_lines)
+            .alignment(Alignment::Left)
+            .style(Style::default());
+
+        // Render the scrollable area (leave space for scrollbar if needed)
+        let content_area = if needs_scrollbar {
+            Rect {
+                x: area.x,
+                y: area.y,
+                width: area.width.saturating_sub(1),
+                height: area.height,
+            }
+        } else {
+            area
+        };
+
+        Widget::render(paragraph, content_area, buf);
+
+        // Render scrollbar if needed
+        if needs_scrollbar {
+            let border_style = if state.is_focused {
+                Style::default().fg(THEME.info)
+            } else {
+                Style::default()
+                    .fg(THEME.secondary_fg)
+                    .add_modifier(Modifier::DIM)
+            };
+
+            let scrollbar = Scrollbar::default()
+                .orientation(ScrollbarOrientation::VerticalRight)
+                .begin_symbol(Some("↑"))
+                .end_symbol(Some("↓"))
+                .style(border_style);
+
+            scrollbar.render(area, buf, &mut state.scrollbar_state);
+        }
     }
 
     fn render_dependency_list(
@@ -390,29 +579,35 @@ impl<'a> StatefulWidget for DependencyView<'a> {
         let inner_area = block.inner(area);
         block.render(area, buf);
 
-        // Only show dependency info for pending tasks
-        if matches!(state.task_status, TaskStatus::NotStarted) {
-            self.render_dependency_list(state, inner_area, buf);
-        } else {
-            // Show a message indicating why the dependency view is not relevant
-            let message = match state.task_status {
-                TaskStatus::InProgress => "Task is now running",
-                TaskStatus::Success => "Task completed successfully",
-                TaskStatus::Failure => "Task failed",
-                TaskStatus::Skipped => "Task was skipped",
-                _ => "Task is no longer pending",
-            };
+        // Show different content based on task status
+        match state.task_status {
+            TaskStatus::NotStarted => {
+                self.render_dependency_list(state, inner_area, buf);
+            }
+            TaskStatus::Skipped => {
+                // DEBUGGING: Force our enhanced view for skipped tasks
+                self.render_skipped_task_info(state, inner_area, buf);
+            }
+            _ => {
+                // Show a message indicating why the dependency view is not relevant
+                let message = match state.task_status {
+                    TaskStatus::InProgress => "Task is now running",
+                    TaskStatus::Success => "Task completed successfully",
+                    TaskStatus::Failure => "Task failed",
+                    _ => "Task is no longer pending",
+                };
 
-            let message_line = vec![Line::from(vec![Span::styled(
-                message,
-                Style::default().fg(THEME.secondary_fg),
-            )])];
+                let message_line = vec![Line::from(vec![Span::styled(
+                    message,
+                    Style::default().fg(THEME.secondary_fg),
+                )])];
 
-            let paragraph = Paragraph::new(message_line)
-                .alignment(Alignment::Center)
-                .style(Style::default());
+                let paragraph = Paragraph::new(message_line)
+                    .alignment(Alignment::Center)
+                    .style(Style::default());
 
-            Widget::render(paragraph, inner_area, buf);
+                Widget::render(paragraph, inner_area, buf);
+            }
         }
     }
 }
