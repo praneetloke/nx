@@ -88,6 +88,9 @@
       "inputs": ["{projectRoot}/pnpm-lock.yaml"]
     },
     "echo": {
+      "dependsOn": ["intermediate"]
+    },
+    "intermediate": {
       "dependsOn": ["fail-task"]
     },
     "prepush": {

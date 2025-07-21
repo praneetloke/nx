@@ -20,6 +20,7 @@
     "submit-plugin": "node ./scripts/submit-plugin.js",
     "prepare": "is-ci || husky",
     "echo": "echo 123458",
+    "intermediate": "echo 'intermediate task completed'",
     "fail-task": "exit 1",
     "preinstall": "node ./scripts/preinstall.js",
     "test": "nx run-many -t test",
@@ -416,6 +417,7 @@
     "includedScripts": [
       "lint-pnpm-lock",
       "echo",
+      "intermediate",
       "fail-task",
       "check-commit",
       "check-format",

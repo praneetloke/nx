@@ -1662,21 +1662,19 @@ impl App {
         };
 
         // Create or update dependency view state for this pane
-        let should_update =
-            self.dependency_view_states[pane_idx]
-                .as_ref()
-                .map_or(false, |existing_state| {
-                    existing_state.current_task == task_name
-                        && existing_state.task_status == task_status
-                });
+        let should_update = self.dependency_view_states[pane_idx]
+            .as_ref()
+            .map_or(false, |existing_state| {
+                existing_state.current_task == task_name
+            });
 
         if should_update {
-            // Same task and status, update the existing state
+            // Same task, update the existing state (preserves scroll position, etc.)
             if let Some(existing_state) = self.dependency_view_states[pane_idx].as_mut() {
                 existing_state.update(task_status, is_focused, throbber_counter, pane_area);
             }
         } else {
-            // Different task, different status, or no existing state - create a new one
+            // Different task or no existing state - create a new one
             // This ensures we get fresh dependency analysis when task becomes SKIPPED
             let new_state = DependencyViewState::new(
                 task_name.clone(),
