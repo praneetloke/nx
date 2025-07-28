@@ -1,0 +1,76 @@
+---
+import { getCollection } from 'astro:content';
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import { Card, CardGrid, Badge } from '@astrojs/starlight/components';
+
+const communityPlugins = await getCollection('community-plugins');
+
+// Get plugin overview docs from the plugin-docs collection
+const plugins = await getCollection('plugin-docs', (entry) => entry.data.docType === 'overview');
+
+
+console.log(plugins)
+---
+
+<StarlightPage frontmatter={{
+  title: 'Nx Plugins',
+               description: 'Discover all available Nx plugins to enhance your development workflow. Each plugin provides generators, executors, and migrations to help you build modern applications.'
+               
+               }}
+
+               headings={[{depth: 2, text: 'Official Plugins', slug:"#official-plugins"}, 
+                                                               {depth: 2, text: 'Community Plugins', slug: '#community-plugins'}]}
+               >
+
+               <h2 id="official-plugins">Official Plugins</h3>
+
+  <CardGrid>
+    {plugins.map(plugin => (
+      <Card title={plugin.data.packageName} icon="open-book">
+      <div class="plugin-description">{plugin.data.description}
+        </div>
+
+        <div class="plugin-features">
+          {plugin.data.features?.map(feature => (
+            <a href={`/api/plugins/${plugin.data.pluginName}/${feature}`}>
+              <Badge variant="default" text={feature.charAt(0).toUpperCase() + feature.slice(1)} size="small" />
+            </a>
+          ))}
+        </div>
+
+      </Card>
+    ))}
+  </CardGrid>
+
+
+
+  <h2 id="community-plugins">Community Plugins</h3>
+  
+  <hr />
+
+  <CardGrid>
+    {communityPlugins.map(plugin => (<Card title={plugin.id} icon="open-book">
+    <p>
+    {plugin.data.description}
+    </p>
+
+    <a href={plugin.data.url}>View plugin</a>
+
+
+    </Card>))}
+    </CardGrid>
+
+
+
+</StarlightPage>
+
+<style>
+
+  .plugin-features {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+</style>
+

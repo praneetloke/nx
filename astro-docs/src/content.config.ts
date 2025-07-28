@@ -6,6 +6,7 @@ import { CliLoader } from './plugins/cli.loader';
 import { DevkitLoader } from './plugins/devkit.loader';
 import { file } from 'astro/loaders';
 import { CnwLoader } from './plugins/cnw.loader.ts';
+import qualityIndicators from './quality-indicators.json';
 
 // Default docs collection handled by Starlight
 const docs = defineCollection({
@@ -27,8 +28,27 @@ const pluginDocs = defineCollection({
     title: z.string(),
     pluginName: z.string(),
     packageName: z.string(),
-    docType: z.enum(['generators', 'executors', 'migrations']),
+    docType: z.enum(['generators', 'executors', 'migrations', 'overview']),
+    features: z.array(z.string()).optional(),
+    totalDocs: z.number().optional(),
     description: z.string(),
+  }),
+});
+
+const communityPlugins = defineCollection({
+  loader: file('src/content/approved-community-plugins.json', (doc) => {
+    return {
+      ...doc,
+      ...(qualityIndicators?.[doc.slug] || {}),
+    };
+  }),
+  schema: z.object({
+    slug: z.string(),
+    description: z.string(),
+    url: z.string(),
+    lastPublishedDate: z.date().optional(),
+    npmDownloads: z.number().optional(),
+    githubStars: z.number().optional(),
   }),
 });
 
@@ -84,4 +104,5 @@ export const collections = {
   'plugin-docs': pluginDocs,
   'devkit-docs': devkitDocs,
   'cnw-docs': cnwDocs,
+  'community-plugins': communityPlugins,
 };

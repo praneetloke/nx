@@ -50,7 +50,7 @@ type DocEntry = CollectionEntry<'plugin-docs'>;
 function generateMigrationItem(
   name: string,
   item: any,
-  packageName: string
+  packageName: string,
 ): string {
   const { config } = item;
   let markdown = `\n#### \`${name}\`\n`;
@@ -72,7 +72,7 @@ function generatePackageUpdateItem(item: any): string {
     markdown += `|---------|----------|\n`;
 
     for (const [packageName, packageConfig] of Object.entries(
-      config.packages
+      config.packages,
     ) as [string, any][]) {
       markdown += `| \`${packageName}\` | \`${packageConfig.version}\` |\n`;
     }
@@ -86,7 +86,7 @@ function generatePackageUpdateItem(item: any): string {
 function generateMarkdown(
   pluginName: string,
   items: Map<string, any>,
-  docType: 'generators' | 'executors' | 'migrations'
+  docType: 'generators' | 'executors' | 'migrations',
 ) {
   const packageName = `@nx/${pluginName}`;
   const typeLabel = docType.charAt(0).toUpperCase() + docType.slice(1);
@@ -141,7 +141,7 @@ Below is a complete reference for all available ${docType} and their options.
       // Combine all items without sub-headers
       const generators = items.filter(({ item }) => item.type === 'generator');
       const packageUpdates = items.filter(
-        ({ item }) => item.type === 'packageJsonUpdate'
+        ({ item }) => item.type === 'packageJsonUpdate',
       );
 
       // Add generators first
@@ -160,7 +160,7 @@ Below is a complete reference for all available ${docType} and their options.
 
   // Sort items alphabetically for non-migration types
   const sortedItems = Array.from(items.entries()).sort(([a], [b]) =>
-    a.localeCompare(b)
+    a.localeCompare(b),
   );
 
   for (const [name, { config, schema }] of sortedItems) {
@@ -204,7 +204,7 @@ nx run project:${name} [options]
     const positionalArgs: string[] = [];
     for (const [propName, prop] of Object.entries(properties) as [
       string,
-      any
+      any,
     ][]) {
       if (
         prop.$default &&
@@ -313,7 +313,7 @@ function getPluginDescription(pluginPath: string, pluginName: string): string {
 export async function generateAllPluginDocs(
   logger: LoaderContext['logger'],
   watcher: LoaderContext['watcher'],
-  renderMarkdown: (content: string) => Promise<RenderedContent>
+  renderMarkdown: (content: string) => Promise<RenderedContent>,
 ): Promise<DocEntry[]> {
   logger.info('Generating plugin documentation...');
   const entries: DocEntry[] = [];
@@ -324,7 +324,7 @@ export async function generateAllPluginDocs(
     const pluginPath = join(workspaceRoot, 'packages', relativePath);
 
     if (!existsSync(pluginPath)) {
-      logger.warn(`⚠️  Skipping ${relativePath} - path does not exist`);
+      logger.warn(`Skipping ${relativePath} - path does not exist`);
       skipCount++;
       continue;
     }
@@ -335,6 +335,21 @@ export async function generateAllPluginDocs(
 
     // Get plugin description from package.json
     const pluginDescription = getPluginDescription(pluginPath, pluginName);
+
+    const pluginOverview: DocEntry = {
+      id: `${pluginName}-overview`,
+      body: 'n/a',
+      collection: 'plugin-docs',
+      data: {
+        description: pluginDescription,
+        packageName: `@nx/${pluginName}`,
+        pluginName: pluginName,
+        features: [],
+        totalDocs: 0,
+        docType: 'overview',
+        title: '',
+      },
+    };
 
     try {
       // Process generators
@@ -354,6 +369,9 @@ export async function generateAllPluginDocs(
             description: pluginDescription,
           },
         });
+
+        pluginOverview.data.features!.push('generators');
+        pluginOverview.data.totalDocs!++;
       }
 
       // Process executors
@@ -373,6 +391,8 @@ export async function generateAllPluginDocs(
             description: pluginDescription,
           },
         });
+        pluginOverview.data.features!.push('executors');
+        pluginOverview.data.totalDocs!++;
       }
 
       // Process migrations
@@ -392,6 +412,8 @@ export async function generateAllPluginDocs(
             description: pluginDescription,
           },
         });
+        pluginOverview.data.features!.push('migrations');
+        pluginOverview.data.totalDocs!++;
       }
 
       if (generators?.size || executors?.size || migrations?.size) {
@@ -399,7 +421,7 @@ export async function generateAllPluginDocs(
         successCount++;
       } else {
         logger.warn(
-          `⚠️  Skipping ${pluginName} - no visible documentation found`
+          `⚠️  Skipping ${pluginName} - no visible documentation found`,
         );
         skipCount++;
       }
@@ -407,7 +429,9 @@ export async function generateAllPluginDocs(
       logger.error(`❌ Error processing ${pluginName}: ${error.message}`);
       skipCount++;
     }
+    entries.push(pluginOverview);
   }
+
   return entries;
 }
 
@@ -421,11 +445,12 @@ export function PluginLoader(options: any = {}): Loader {
           logger,
           watcher,
           // @ts-expect-error - astro:content types seem to always be out of sync w/ generated types
-          renderMarkdown
+          renderMarkdown,
         );
         docs.forEach(store.set);
+
         logger.info(
-          `Generated plugin documentation with ${docs.length} entries`
+          `Generated plugin documentation with ${docs.length} entries`,
         );
       };
 
