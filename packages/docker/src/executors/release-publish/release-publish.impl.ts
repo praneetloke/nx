@@ -80,7 +80,11 @@ function checkDockerImageExistsLocally(imageRef: string) {
   try {
     const result = execSync(
       `docker images --filter "reference=${imageRef}" --quiet`,
-      { encoding: 'utf8', stdio: 'inherit', maxBuffer: LARGE_BUFFER }
+      {
+        encoding: 'utf8',
+        stdio: process.env.CI ? undefined : 'inherit',
+        maxBuffer: LARGE_BUFFER,
+      }
     );
     return result.trim().length > 0;
   } catch {
