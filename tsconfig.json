@@ -384,6 +384,9 @@
     },
     {
       "path": "./astro-docs"
+    },
+    {
+      "path": "./tools/update-repos"
     }
   ],
   "extends": "./tsconfig.base.json"
