@@ -12,6 +12,7 @@ on:
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
   PNPM_HOME: ~/.pnpm
+  NODE_OPTIONS: --max_old_space_size=8192
 
 jobs:
   main-linux:
@@ -64,7 +65,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: 'pnpm'
 
       - name: Cache Rust toolchain and cargo registry
@@ -277,7 +278,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: 'pnpm'
 
       - name: Cache Rust toolchain and cargo registry
