@@ -110,19 +110,19 @@ function addLocalPluginManagement(filePath: string) {
 function addSpringBootPlugin(filePath: string) {
   let content = readFileSync(filePath).toString();
   const isKotlin = filePath.endsWith('.kts');
-  
+
   // Find the plugins block and add Spring Boot plugin
   if (content.includes('plugins {')) {
-    const pluginLine = isKotlin 
+    const pluginLine = isKotlin
       ? '    id("org.springframework.boot") version "+"'
       : "    id 'org.springframework.boot' version '+'";
-      
+
     content = content.replace(
       /plugins\s*\{/,
       `plugins {
 ${pluginLine}`
     );
   }
-  
+
   writeFileSync(filePath, content);
 }
