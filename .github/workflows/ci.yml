@@ -12,7 +12,6 @@ on:
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
   PNPM_HOME: ~/.pnpm
-  NODE_OPTIONS: --max_old_space_size=8192
 
 jobs:
   main-linux:
@@ -29,7 +28,7 @@ jobs:
       NX_ALLOW_NON_CACHEABLE_DTE: 'true'
       NX_CLOUD_USE_NEW_TASK_APIS: 'true'
       NX_CLOUD_USE_NEW_STREAM_OUTPUT: 'true'
-      NODE_OPTIONS: --max_old_space_size=14336
+      NODE_OPTIONS: --max_old_space_size=8192
 
     steps:
       - name: Checkout
@@ -95,6 +94,8 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Install project dependencies
+        env:
+          NODE_OPTIONS: --max_old_space_size=8192 --no-experimental-strip-types
         run: |
           pnpm install --frozen-lockfile
           pnpm playwright install --with-deps
