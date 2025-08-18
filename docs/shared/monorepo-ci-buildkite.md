@@ -18,7 +18,7 @@ steps:
       - secrets:
           variables:
             GRAPHQL_API_TOKEN: GRAPHQL_API_TOKEN
-      - nx-set-shas#v1.0.0
+      - nx-set-shas
 ```
 
 ### Get the Commit of the Last Successful Build
