@@ -1,0 +1,33 @@
+steps:
+  - label: "Run Nx"
+    key: nx
+    commands:
+      <% if(packageManager === 'bun'){ %>
+      # Ensure your Buildkite agent has Bun installed already.
+      <% } else if (packageManager === 'yarn' && packageManagerVersion) { %>
+      # Ensure your Buildkite agent has Node.js and Yarn installed already.
+      - corepack enable
+      <% } else if(packageManager ==='pnpm'){ %>
+      # Ensure your Buildkite agent has pnpm installed already.
+      <% } %>
+      # This enables task distribution via Nx Cloud
+      # Run this command as early as possible, before dependencies are installed
+      # Learn more at https://nx.dev/ci/reference/nx-cloud-cli#npx-nxcloud-startcirun
+      <% if (connectedToCloud) { %># Uncomment this line to enable task distribution<% } else { %># Connect your workspace by running "nx connect" and uncomment this line to enable task distribution<% } %>
+      # - <%= packageManagerPreInstallPrefix %> nx start-ci-run --distribute-on="3 linux-medium-js" --stop-agents-after="<% if(hasE2E){ %>e2e-ci<% } else { %>build<% } %>"
+      - <%= packageManagerInstall %><% if(hasCypress){ %>
+      - <%= packageManagerPrefix %> cypress install<% } %><% if(hasPlaywright){ %>
+      - <%= packageManagerPrefix %> playwright install --with-deps<% } %>
+    plugins:
+      <% if(!useRunMany){ %>
+      - nx-set-shas
+      - secrets:
+          variables:
+            GRAPHQL_API_TOKEN: GRAPHQL_API_TOKEN
+      <% } %>
+
+<% for (const command of commands) { %><% if (command.comments) { %><% for (const comment of command.comments) { %>
+  # <%- comment %><% } %><% } %><% if (command.command) { %>
+  - <%= command.command %><% if (command.alwaysRun) { %>
+    allow_dependency_failure: true<% } %>
+    depends_on: nx<% } %><% } %>
