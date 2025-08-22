@@ -1,8 +1,8 @@
-import type { StarlightUserConfig } from '@astrojs/starlight/types';
 import { workspaceRoot } from '@nx/devkit';
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 import frontMatter from 'front-matter';
+import type { SidebarSubItem } from 'astro-docs/src/utils/sidebar.types';
 
 /**
  * Map of plugins names to their technology grouping
@@ -80,9 +80,6 @@ export function getAllTechnologyCategories(): string[] {
   return Array.from(new Set(Object.values(pluginToTechnology))).sort();
 }
 
-type SidebarItem = NonNullable<StarlightUserConfig['sidebar']>[number];
-type SidebarSubItem = Extract<SidebarItem, { items: any[] }>;
-
 const pluginBasePath = join(workspaceRoot, 'packages');
 /**
  * get all the linkable pages for a given plugin for the sidebar
@@ -148,12 +145,34 @@ export function getPluginItems(
     join(workspaceRoot, 'astro-docs', 'src', 'content', 'docs', baseUrl)
   );
 
+  // Enforce consistent ordering across all technology sections
+  // Order: Introduction → Guides → Generated items (Generators, Executors, Migrations) → Everything else
+  const finalItems: SidebarSubItem[] = [];
+  let introItem: SidebarItem | undefined;
+  let guidesItem: SidebarItem | undefined;
+  const otherStaticFiles: SidebarItem[] = [];
+
   if (staticFiles.length > 0) {
-    items.push(...staticFiles);
+    for (const file of staticFiles) {
+      if (typeof file === 'string') continue;
+      const isIntro = file.label === 'Introduction';
+
+      if (isIntro) {
+        introItem = file;
+      } else if (file.label === 'Guides') {
+        guidesItem = file;
+      } else {
+        otherStaticFiles.push(file);
+      }
+    }
   }
 
-  // @ts-expect-error - idk I'll figure out to type it
-  return items;
+  introItem && finalItems.push(introItem as SidebarSubItem);
+  guidesItem && finalItems.push(guidesItem as SidebarSubItem);
+  finalItems.push(...(items as SidebarSubItem[]));
+  finalItems.push(...(otherStaticFiles as SidebarSubItem[]));
+
+  return finalItems;
 }
 
 function hasValidConfig(
@@ -279,11 +298,13 @@ function getStaticPluginFiles(pluginContentDir: string): SidebarItem[] {
 
               items.push({
                 label: label,
+                collapsed: true,
                 items: subItems,
               } as SidebarSubItem);
             } else {
               items.push({
                 label: file.name,
+                collapsed: true,
                 items: subItems,
               } as SidebarSubItem);
             }

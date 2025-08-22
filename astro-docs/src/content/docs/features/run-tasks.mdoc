@@ -5,8 +5,6 @@ sidebar:
   order: 1
 ---
 
-# Tasks
-
 {% youtube src="https://youtu.be/aEdfYiA5U34" title="Run tasks with Nx" /%}
 
 In a monorepo setup, you don't just run tasks for a single project; you might have hundreds to manage. To help with this, Nx provides a powerful task runner that allows you to:
@@ -103,7 +101,7 @@ The [project configuration docs](/reference/project-configuration) has the detai
 
 Nx uses the following syntax:
 
-![Syntax for Running Tasks in Nx](/src/assets/features/run-target-syntax.svg)
+![Syntax for Running Tasks in Nx](../../../assets/features/run-target-syntax.svg)
 
 {% aside type="tip" title="Terminal UI" %}
 
@@ -161,9 +159,8 @@ It is pretty common to have dependencies between tasks, requiring one task to be
 
 Nx can automatically detect the dependencies between projects (see [project graph](/features/explore-graph)).
 
-\{% graph height="450px" %}
+{% graph height="450px" %}
 
-```json
 {
   "projects": [
     {
@@ -206,9 +203,8 @@ Nx can automatically detect the dependencies between projects (see [project grap
   "focus": null,
   "groupByFolder": false
 }
-```
 
-\{% /graph %}
+{% /graph %}
 
 However, you need to specify for which targets this ordering is important. In the following example we are telling Nx that before running the `build` target it needs to run the `build` target on all the projects the current project depends on:
 
